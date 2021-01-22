@@ -51,26 +51,41 @@ class UNet:
     def custom_loss(input_data):
         def loss(y_true, y_pred):
 
-            mse_error = K.mean(K.square(y_pred - y_true), axis=-1) #Typical Loss function
+            mse_error = UNet.mse_loss #Typical Loss function
             physical_error = UNet.physical_loss(input_data, y_pred)
 
-            return mse_error + physical_error# regularization value = 0.001
+            return mse_error+physical_error # regularization value = 0.001
 
         return loss
 
+    def mse_loss(y_true, y_pred):
+        return K.mean(K.square(y_pred - y_true), axis=-1)
 
     def physical_loss(force, disp):
-
+        '''
+        if vector product with disp is positive, then loss=0
+        if vector product with disp is negative, then loss=sigmoid(force*disp)
+        '''
         force_dot_disp = K.sum(force * disp, axis = -1)
-        force_norm = K.sqrt(K.sum(K.square(force), axis = -1))
-        disp_norm = K.sqrt(K.sum(K.square(disp), axis = -1)) 
-        norm = (force_norm * disp_norm)# to ignore nan values
-        cos_th = force_dot_disp/norm
-        # cos_th = force_dot_disp
-        zero_tensor = tf.zeros_like(cos_th,dtype='float32')
-        mask = tf.not_equal(cos_th, zero_tensor) #find non-zero values
-        identity_tensor = tf.cast(mask, tf.float32)
+        is_positive = force_dot_disp > 0
 
-        loss =  K.subtract(identity_tensor,  cos_th)
-        return loss
+        loss_for_positive = tf.zeros_like(force_dot_disp,dtype='float32')
+        loss_for_negative = K.sigmoid(force_dot_disp)
+
+        return tf.where(is_positive, loss_for_positive, loss_for_negative)
+        
+    # def physical_loss(force, disp):
+
+    #     force_dot_disp = K.sum(force * disp, axis = -1)
+    #     force_norm = K.sqrt(K.sum(K.square(force), axis = -1))
+    #     disp_norm = K.sqrt(K.sum(K.square(disp), axis = -1)) 
+    #     norm = (force_norm * disp_norm)# to ignore nan values
+    #     cos_th = force_dot_disp/norm
+    #     # cos_th = force_dot_disp
+    #     zero_tensor = tf.zeros_like(cos_th,dtype='float32')
+    #     mask = tf.not_equal(cos_th, zero_tensor) #find non-zero values
+    #     identity_tensor = tf.cast(mask, tf.float32)
+
+    #     loss =  K.subtract(identity_tensor,  cos_th)
+    #     return loss
 
