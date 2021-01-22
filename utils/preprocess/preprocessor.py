@@ -37,3 +37,25 @@ class Preprocessor:
 				disps_reshape[x_index, y_index, z_index, :] = disps[i, :]
 
 		return forces_reshape, disps_reshape
+	@staticmethod
+	def generate_time_step(meshfiles,time_step, data_shape,channel_first=False):
+
+		'''
+		This function prepared dataset for LSTM model
+		input: meshfiles: a list which includes pathes to simulation files
+		data_shape: shape of data for each simulation file, in format (nx, ny,nz,3)
+		nx: number of elements in x direction
+		ny: number of elements in y direction
+		nz: number of elements in z direction
+		'''
+
+		forces_time_steps = np.zeros((time_step,data_shape[0], data_shape[1], data_shape[2],data_shape[3]))
+		disps_time_steps = np.zeros((time_step,data_shape[0], data_shape[1], data_shape[2],data_shape[3]))
+
+		for (i,meshfile) in enumerate(meshfiles):
+
+			forces, disps = Preprocessor.array_reshape(meshfile, data_shape,channel_first)
+			forces_time_steps[i, :, :, :, :] = forces
+			disps_time_steps[i, :, :, :, :] = disps
+
+		return forces_time_steps, disps_time_steps
